@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+set -e
+
+XDEBUG_MODE=${XDEBUG_MODE:-off}
+XDEBUG_CLIENT_HOST=${XDEBUG_CLIENT_HOST:-host.docker.internal}
+XDEBUG_CLIENT_PORT=${XDEBUG_CLIENT_PORT:-9003}
+XDEBUG_IDEKEY=${XDEBUG_IDEKEY:-PHPSTORM}
+
+# Xdebug.ini
+if [ -f /etc/php/8.0/mods-available/xdebug.ini ]; then
+    echo "zend_extension=xdebug.so
+
+    xdebug.client_port=${XDEBUG_CLIENT_PORT}
+    xdebug.clent_host=${XDEBUG_CLIENT_HOST}
+    xdebug.discover_client_host=on
+    xdebug.extended_info=1
+    xdebug.idekey=${XDEBUG_IDEKEY}
+    xdebug.mode=${XDEBUG_MODE}
+    xdebug.start_with_request=yes
+    " > /etc/php/8.0/mods-available/xdebug.ini
+fi;
+
+if [ ! -z "$WWWUSER" ]; then
+    usermod -u $WWWUSER sail
+fi
+
+if [ ! -d /.composer ]; then
+    mkdir /.composer
+fi
+
+chmod -R ugo+rw /.composer
+
+if [ $# -gt 0 ];then
+    exec gosu $WWWUSER "$@"
+else
+    /usr/bin/supervisord -n -c /etc/supervisor/conf.d/supervisord.conf
+fi
